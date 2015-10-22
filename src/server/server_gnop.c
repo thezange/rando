@@ -1,4 +1,5 @@
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_net.h>
 #include "window.h"
 #include "gameloop.h"
 #include "stick.h"
@@ -25,14 +26,38 @@ int main(int argc, char *argv[])
 	/* start up SDL and create window */
 	if (init() < 0) {
 		fprintf(stderr, "failed to initialize!\n");
-		rval = -1;
+		rval = 1;
 		goto exit;
 	}
 	/* load media */
 	if (load_media() < 0) {
 		fprintf(stderr, "failed to load media!\n");
-		rval = -1;
+		rval = 1;
 		goto exit;
+	}
+	/* networking setup */
+	/* these definitions need to be put in the global space */
+	IPaddress ip;
+	TCPsocket server = NULL;
+	TCPsocket client = NULL;
+	if (SDLNet_ResolveHost(&ip, NULL, 9999) < 0) {
+		fprintf(stderr, "SDLNet_ResolveHost: %s\n",
+				SDLNet_GetError());
+		rval = 1;
+		goto exit;
+	}
+	server = SDLNet_TCP_Open(&ip);
+	if (!server) {
+		fprintf(stderr, "SDLNet_TCP_Open: %s\n",
+				SDLNet_GetError());
+		rval = 1;
+		goto exit;
+	}
+	/* now listen for client */
+	goto exit;
+	while (!client) {
+		SDL_Delay(0);
+		client = SDLNet_TCP_Accept(server);
 	}
 	/* start game loop */
 	printf("starting loop\n");
@@ -50,8 +75,13 @@ int init()
 	int rval;
 	/* initialize SDL */
 	if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-		fprintf(stderr, "SDL could not initialize! SDL_Error: "
-				"%s\n", SDL_GetError());
+		fprintf(stderr, "SDL_Init: %s\n", SDL_GetError());
+		rval = -1;
+		goto error;
+	}
+	/* initialize SDLNet */
+	if (SDLNet_Init() < 0) {
+		fprintf(stderr, "SDLNet_Init: %s\n", SDL_GetError());
 		rval = -1;
 		goto error;
 	}
@@ -121,6 +151,7 @@ void cleanup()
 	window_free(g_window);
 	g_window = NULL;
 	/* quit SDL subsystems */
+	SDLNet_Quit();
 	SDL_Quit();
 }
 

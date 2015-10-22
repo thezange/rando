@@ -110,6 +110,8 @@ static void update()
 		g_ball->y_direction = 1;
 		g_score->opponent_event = 0;
 	}
+	/* update client state */
+	
 }
 
 static void render()
